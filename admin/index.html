@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Espace privé — Keth</title>
+  <style>
+    :root{--bg:#090909;--card:#151515;--line:#303030;--text:#f5f5f2;--muted:#969690;--acid:#d8ff57;--orange:#ff7657}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:16px/1.45 Arial,sans-serif}button,input,textarea{font:inherit}
+    .shell{min-height:100dvh;padding:clamp(1rem,4vw,3rem)}header{display:flex;justify-content:space-between;gap:1rem;align-items:center;padding-bottom:1.5rem;border-bottom:1px solid var(--line)}
+    header a{color:var(--text);text-decoration:none;font-weight:700}header span{color:var(--muted);font-size:.75rem;text-transform:uppercase;letter-spacing:.1em}
+    .login{width:min(520px,100%);margin:12vh auto;background:var(--card);border:1px solid var(--line);border-radius:24px;padding:clamp(1.4rem,4vw,2.5rem)}
+    .login b{display:grid;place-items:center;width:54px;height:54px;border-radius:50%;background:var(--acid);color:#111}.login h1{font-size:clamp(2.4rem,8vw,4.5rem);letter-spacing:-.065em;line-height:.95;margin:1.5rem 0 1rem}.login p{color:var(--muted)}
+    label{display:grid;gap:.5rem;margin-top:1.5rem;font-size:.78rem;color:var(--muted)}input,textarea{width:100%;border:1px solid #444;border-radius:14px;background:#0d0d0d;color:#fff;padding:1rem}
+    button{border:0;border-radius:14px;background:var(--acid);color:#111;padding:.9rem 1.1rem;font-weight:700;cursor:pointer}.login button{width:100%;margin-top:.8rem}.notice{min-height:1.5rem;color:var(--acid);font-size:.82rem}
+    .dashboard{padding-top:3rem}.dashboard-head{display:flex;align-items:end;justify-content:space-between;gap:1rem;margin-bottom:2rem}.dashboard h1{font-size:clamp(2.7rem,7vw,7rem);line-height:.9;letter-spacing:-.07em;margin:.5rem 0}.dashboard-head button{background:#fff}
+    .stats{display:flex;gap:.6rem;flex-wrap:wrap}.stats span{border:1px solid var(--line);border-radius:99px;padding:.55rem .8rem;color:var(--muted);font-size:.75rem}.stats b{color:#fff}
+    .inbox{display:grid;grid-template-columns:minmax(260px,.8fr) 1.7fr;gap:1.2rem;margin-top:1.5rem}.list,.thread{border:1px solid var(--line);border-radius:20px;background:var(--card);overflow:hidden}.list{max-height:68dvh;overflow-y:auto}
+    .empty{padding:2rem;color:var(--muted)}.message-item{width:100%;display:grid;gap:.35rem;text-align:left;border-radius:0;border-bottom:1px solid var(--line);background:transparent;color:#fff;padding:1rem;font-weight:400}.message-item:hover,.message-item.active{background:#242424}.message-item p{margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.message-item small{color:var(--muted)}
+    .thread{padding:clamp(1rem,3vw,2rem);min-height:420px}.thread h2{font-size:clamp(1.6rem,4vw,2.8rem);letter-spacing:-.04em}.bubble{margin:1.5rem 0;padding:1.2rem;border-radius:18px;background:#242424}.bubble small{color:var(--muted)}.bubble p{font-size:1.08rem}
+    .reply{display:grid;gap:.7rem}.reply textarea{min-height:130px;resize:vertical}.reply-actions{display:flex;justify-content:space-between;gap:.6rem}.reply-actions button:first-child{background:#333;color:#fff}.status{color:var(--orange);font-size:.72rem;text-transform:uppercase;letter-spacing:.1em}
+    [hidden]{display:none!important}
+    @media(max-width:760px){.shell{padding:1rem}.dashboard{padding-top:2rem}.dashboard-head{align-items:start;flex-direction:column}.inbox{grid-template-columns:1fr}.list{max-height:38dvh}.thread{min-height:350px}.reply-actions{display:grid;grid-template-columns:1fr 1fr}.login{margin:8vh auto}header span{display:none}}
+  </style>
+</head>
+<body>
+<main class="shell">
+  <header><a href="../">Christ Emmane</a><span>Keth · espace privé</span></header>
+  <section class="login" id="login">
+    <b>K</b><h1>Bienvenue dans votre espace privé.</h1>
+    <p>Un lien de connexion sécurisé sera envoyé uniquement à l’adresse administrateur autorisée.</p>
+    <label>Adresse e-mail<input id="email" type="email" value="gomaemmane@gmail.com" autocomplete="email"></label>
+    <button id="magic-link">Recevoir mon lien de connexion</button>
+    <p class="notice" id="login-notice" role="status"></p>
+  </section>
+  <section class="dashboard" id="dashboard" hidden>
+    <div class="dashboard-head"><div><span class="status">Administration</span><h1>Messages de Keth</h1><div class="stats" id="stats"></div></div><button id="logout">Se déconnecter</button></div>
+    <div class="inbox"><div class="list" id="message-list"></div><article class="thread" id="thread"><p class="empty">Sélectionnez une question pour la consulter.</p></article></div>
+  </section>
+</main>
+<script>
+const URL='https://wsuolkdmfpyxogrqeuwf.supabase.co';
+const KEY='sb_publishable_pfDGQcXdXOiYE62yByiiQg_0zNX8bwu';
+const OWNER='gomaemmane@gmail.com';
+const login=document.querySelector('#login'),dashboard=document.querySelector('#dashboard'),notice=document.querySelector('#login-notice');
+let session=JSON.parse(localStorage.getItem('keth-admin-session')||'null'),messages=[],selected=null;
+function headers(auth=false){const h={apikey:KEY,'Content-Type':'application/json'};if(auth&&session?.access_token)h.Authorization=`Bearer ${session.access_token}`;return h}
+function saveSession(data){session=data;localStorage.setItem('keth-admin-session',JSON.stringify(data))}
+function readCallback(){const p=new URLSearchParams(location.hash.slice(1));if(p.get('access_token')){saveSession({access_token:p.get('access_token'),refresh_token:p.get('refresh_token'),expires_at:Date.now()+Number(p.get('expires_in')||3600)*1000});history.replaceState(null,'',location.pathname)}}
+async function refreshSession(){if(!session?.refresh_token)return false;if(session.expires_at>Date.now()+60000)return true;const r=await fetch(`${URL}/auth/v1/token?grant_type=refresh_token`,{method:'POST',headers:headers(),body:JSON.stringify({refresh_token:session.refresh_token})});if(!r.ok)return false;const d=await r.json();saveSession({...d,expires_at:Date.now()+d.expires_in*1000});return true}
+async function getUser(){if(!await refreshSession())return null;const r=await fetch(`${URL}/auth/v1/user`,{headers:headers(true)});return r.ok?r.json():null}
+document.querySelector('#magic-link').onclick=async()=>{const email=document.querySelector('#email').value.trim().toLowerCase();if(email!==OWNER){notice.textContent='Cette adresse n’est pas autorisée.';return}notice.textContent='Envoi en cours…';const redirectTo=location.href.split('#')[0];const r=await fetch(`${URL}/auth/v1/otp?redirect_to=${encodeURIComponent(redirectTo)}`,{method:'POST',headers:headers(),body:JSON.stringify({email,create_user:true})});notice.textContent=r.ok?'Lien envoyé. Consultez votre boîte e-mail et cliquez sur le lien.':'Impossible d’envoyer le lien. Vérifiez la configuration Auth de Supabase.'};
+async function loadMessages(){const r=await fetch(`${URL}/rest/v1/keth_messages?select=*&order=created_at.desc`,{headers:headers(true)});if(!r.ok){if(r.status===401)logout();return}messages=await r.json();renderList();renderStats()}
+function renderStats(){const n=messages.filter(m=>m.status==='new').length;document.querySelector('#stats').innerHTML=`<span><b>${messages.length}</b> message(s)</span><span><b>${n}</b> nouveau(x)</span>`}
+function esc(v=''){return String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function renderList(){const list=document.querySelector('#message-list');if(!messages.length){list.innerHTML='<p class="empty">Aucun message pour le moment.</p>';return}list.innerHTML=messages.map(m=>`<button class="message-item ${selected===m.id?'active':''}" data-id="${m.id}"><small>${new Date(m.created_at).toLocaleString('fr-FR')}</small><p>${esc(m.question)}</p><span class="status">${esc(m.status)}</span></button>`).join('');list.querySelectorAll('button').forEach(b=>b.onclick=()=>openMessage(b.dataset.id))}
+function openMessage(id){selected=id;const m=messages.find(x=>x.id===id);renderList();document.querySelector('#thread').innerHTML=`<span class="status">${esc(m.status)}</span><h2>Question du visiteur</h2><div class="bubble"><small>${new Date(m.created_at).toLocaleString('fr-FR')}</small><p>${esc(m.question)}</p></div><label class="reply">Votre réponse<textarea id="owner-reply" placeholder="Écrivez votre réponse…">${esc(m.owner_reply||'')}</textarea></label><div class="reply-actions"><button id="archive">Archiver</button><button id="save-reply">Enregistrer la réponse</button></div><p class="notice" id="thread-notice"></p>`;document.querySelector('#save-reply').onclick=()=>updateMessage('answered',document.querySelector('#owner-reply').value);document.querySelector('#archive').onclick=()=>updateMessage('archived',document.querySelector('#owner-reply').value)}
+async function updateMessage(status,owner_reply){const r=await fetch(`${URL}/rest/v1/keth_messages?id=eq.${selected}`,{method:'PATCH',headers:{...headers(true),Prefer:'return=representation'},body:JSON.stringify({status,owner_reply:owner_reply.trim()||null})});const n=document.querySelector('#thread-notice');if(!r.ok){n.textContent='La modification n’a pas pu être enregistrée.';return}n.textContent='Modification enregistrée.';await loadMessages();openMessage(selected)}
+function logout(){localStorage.removeItem('keth-admin-session');session=null;dashboard.hidden=true;login.hidden=false}
+document.querySelector('#logout').onclick=async()=>{if(session)await fetch(`${URL}/auth/v1/logout`,{method:'POST',headers:headers(true)});logout()};
+(async()=>{readCallback();const user=await getUser();if(user?.email?.toLowerCase()===OWNER){login.hidden=true;dashboard.hidden=false;await loadMessages()}else if(session)logout()})();
+</script>
+</body></html>
